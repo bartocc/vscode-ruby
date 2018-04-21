@@ -1,6 +1,8 @@
-'use strict';
-
+/**
+ * vscode-ruby main
+ */
 import { ExtensionContext, languages, workspace } from 'vscode';
+import * as client from 'vscode-ruby-client';
 
 import * as utils from './utils';
 
@@ -11,14 +13,12 @@ import { registerIntellisenseProvider } from './providers/intellisense';
 import { registerLinters } from './providers/linters';
 import { registerTaskProvider } from './task/rake';
 
-const DOCUMENT_SELECTOR = [
+const DOCUMENT_SELECTOR: { language: string; scheme: string }[] = [
 	{ language: 'ruby', scheme: 'file' },
 	{ language: 'ruby', scheme: 'untitled' }
 ];
 
-export function activate(context: ExtensionContext) {
-	const subs = context.subscriptions;
-
+export function activate(context: ExtensionContext): void {
 	// register language config
 	languages.setLanguageConfiguration('ruby', {
 		indentationRules: {
@@ -28,8 +28,14 @@ export function activate(context: ExtensionContext) {
 		wordPattern: /(-?\d+(?:\.\d+))|(:?[A-Za-z][^-`~@#%^&()=+[{}|;:'",<>/.*\]\s\\!?]*[!?]?)/,
 	});
 
+	if (workspace.getConfiguration('ruby').useLanguageServer) {
+		client.activate(context);
+	} else {
+		// Register legacy providers
+		registerHighlightProvider(context, DOCUMENT_SELECTOR);
+	}
+
 	// Register providers
-	registerHighlightProvider(context, DOCUMENT_SELECTOR);
 	registerCompletionProvider(context, DOCUMENT_SELECTOR);
 	registerFormatter(context, DOCUMENT_SELECTOR);
 
@@ -40,4 +46,10 @@ export function activate(context: ExtensionContext) {
 	}
 
 	utils.loadEnv();
+}
+
+export function deactivate(): void {
+	client.deactivate();
+
+	return undefined;
 }
